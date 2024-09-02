@@ -3,27 +3,11 @@ gameLoaded = false
 local function automateTraining()
     tes3.messageBox("F12 key was pressed!") -- For testing purposes, remove if no longer needed
 
-    -- Define the length of the raycast
-    local maxDistance = 500 -- Adjust as needed, this is the distance to check
+    -- Create menu asking for which magic skill to train
 
-    -- Get the player's camera position and forward direction
-    local camera = tes3.getPlayerEyePosition()
-    local direction = tes3.getPlayerEyeVector()
+    -- Once a magic school is selected, find all character spells under this school, and choose cheapest cost spell
 
-    -- Perform the raycast
-    local result = tes3.rayTest{
-        position = camera,
-        direction = direction,
-        maxDistance = maxDistance,
-        ignore = { tes3.player },
-        root = tes3.game.worldPickRoot, -- Ensures only world objects are tested
-    }
-
-    -- Print out the reference which the player is looking at
-    if result and result.reference then
-        local ref = result.reference
-        tes3.messageBox(ref)
-    end
+    -- Equip spell, and activate it endlessly until magicka runs out
 end
 
 -- Function to check if the pressed key is F12, and to check if game is loaded, in order to activate the automation
