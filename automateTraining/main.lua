@@ -12,18 +12,27 @@ local function castSpell()
 
         local magicSlot = tes3.mobilePlayer.currentSpell -- Get current equipped magic spell
 
-        -- Check if player has enough magicka before casting spell
+        local spellCost = magicSlot.magickaCost
 
-        -- Check if the player has a spell readied
-        if magicSlot then
-            -- Cast the currently equipped spell
-            tes3.cast({
-                reference = player,    
-                target = tes3.getPlayerTarget(),
-                spell = magicSlot,
-                alwaysSucceeds = false
-            })
-            -- tes3.messageBox("Casting equipped spell: %s", magicSlot.id)
+        local totalMagicka = tes3.mobilePlayer.magicka.current
+
+        -- Check if player has enough magicka before casting spell
+        if(totalMagicka >= spellCost) then
+            -- Check if the player has a spell readied
+            if magicSlot then
+                -- Cast the currently equipped spell
+                tes3.cast({
+                    reference = player,    
+                    target = tes3.getPlayerTarget(),
+                    spell = magicSlot,
+                    alwaysSucceeds = false
+                })
+                -- tes3.messageBox("Casting equipped spell: %s", magicSlot.id)
+            end
+        else
+            tes3.messageBox("Not enough magicka to cast current spell. Please restore your magicka.")
+            tes3.messageBox("Deactivating training script.")
+            toggleTraining = false
         end
 end
 
@@ -39,16 +48,28 @@ local function onEveryFrame(e)
     end
 end
 
+local function checkIfMagickaEmpty()
+    local totalMagicka = tes3.mobilePlayer.magicka.current
+    if totalMagicka == 0 then
+        tes3.messageBox("Player's magicka level at zero. Please restore your magicka.")
+        return false
+    else
+        return true
+    end
+end
+
 -- Function to check if the pressed key is F12, and to check if game is loaded, in order to activate the automation
 local function onKeyPress(e)
     if e.keyCode == 88 and gameLoaded then
 
-        if toggleTraining then
-            toggleTraining = false -- Disable spell casting automation
-            tes3.messageBox("Deactivating training script.")
-        else
-            toggleTraining = true -- Enable spell casting automation
-            tes3.messageBox("Activating training script.")
+        if (checkIfMagickaEmpty()) then
+            if toggleTraining then
+                toggleTraining = false -- Disable spell casting automation
+                tes3.messageBox("Deactivating training script.")
+            else
+                toggleTraining = true -- Enable spell casting automation
+                tes3.messageBox("Activating training script.")
+            end
         end
 
     end
