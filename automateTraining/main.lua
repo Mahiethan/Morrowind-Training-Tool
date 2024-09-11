@@ -28,10 +28,11 @@ local function clearMenu()
 end
 
 -- Function called during a menu button press, which clears the menu and set the appropriate flags and values for automatic spell casting
-local function onButtonPressed(selectedOption)
+local function onMagicSelect(selectedOption)
     clearMenu()
 
     selectedMagic = selectedOption
+    tes3.messageBox("Training " .. selectedMagic .. "... Press F12 to stop training.")
     spellSelected = true
 end
 
@@ -74,11 +75,20 @@ local function createCustomMenu()
         local button = buttonBlock:createTextSelect({ text = option })
         button.borderBottom = 5
         button:register("mouseClick", function()
-            onButtonPressed(option) -- Call this function when a button is clicked
+            onMagicSelect(option) -- Call this function when a button is clicked
         end)
     end
 
     -- Create exit button
+    local exitButton = buttonBlock:createButton({ text = "Exit" })
+
+    -- Exit back to game when clicking this button
+    exitButton:register("mouseClick", function()
+        clearMenu()
+        tes3.messageBox("Deactivating training script.")
+        toggleTraining = false
+        spellSelected = false
+    end)
 
     -- Activate the menu mode to make the menu interactive
     tes3ui.enterMenuMode(menuId)
@@ -117,6 +127,7 @@ local function castSpell(magicSchool)
             tes3.messageBox("Not enough magicka to cast current spell. Please restore your magicka.")
             tes3.messageBox("Deactivating training script.")
             toggleTraining = false
+            spellSelected = false
         end
     -- Repeat for other magic schools ... 
     else
