@@ -18,6 +18,17 @@ local options = {
     "Mysticism",
     "Restoration"
 }
+
+-- Dictionary used to convert the magic school string value to its respective index value
+local optionValues = {
+    ["Alteration"] = tes3.magicSchool.alteration,
+    ["Conjuration"] = tes3.magicSchool.conjuration,
+    ["Destruction"] = tes3.magicSchool.destruction,
+    ["Illusion"] = tes3.magicSchool.illusion,
+    ["Mysticism"] = tes3.magicSchool.mysticism,
+    ["Restoration"] = tes3.magicSchool.restoration
+}
+
 -- Function used to close menu correctly
 local function clearMenu()
     local menu = tes3ui.findMenu(menuId)
@@ -32,23 +43,8 @@ end
 local function onMagicSelect(selectedOption)
     clearMenu()
 
-    -- Identify which magic school has been selected (NOT WORKING)
-    -- if(selectedOption == options[0]) then
-    --     selectedMagic = tes3.magicSchool.alteration
-    -- elseif(selectedOption == options[1]) then
-    --     selectedMagic = tes3.magicSchool.conjuration
-    -- elseif(selectedOption == options[2]) then
-    --     selectedMagic = tes3.magicSchool.destruction
-    -- elseif(selectedOption == options[3]) then
-    --     selectedMagic = tes3.magicSchool.illusion
-    -- elseif(selectedOption == options[4]) then
-    --     selectedMagic = tes3.magicSchool.mysticism
-    -- elseif(selectedOption == options[5]) then
-    --     selectedMagic = tes3.magicSchool.restoration
-    -- end
-
-    -- Manually selecting Mysticism (REMOVE AFTER FIXING ABOVE)
-    selectedMagic = tes3.magicSchool.mysticism
+    -- Identify which magic school has been selected
+    selectedMagic = optionValues[selectedOption]
 
     tes3.messageBox("Training " .. selectedOption  .. "... Press F12 to stop training.")
 
@@ -59,42 +55,38 @@ local function onMagicSelect(selectedOption)
 
     -- Ensure the player exists and has spells
     if not playerObject or not playerObject.spells then
-    tes3.messageBox("Player has no spells. Deactivating training script.")
-    toggleTraining = false
-    spellSelected = false
-    selectedMagic = tes3.magicSchool.none;
+        tes3.messageBox("Player has no spells. Deactivating training script.")
+        toggleTraining = false
+        spellSelected = false
+        selectedMagic = tes3.magicSchool.none;
     end
 
     local lowestCost = math.huge
     cheapestSpell = nil
 
     for spell in tes3.iterate(playerObject.spells.iterator) do
-        -- Only consider standard spells (ignore powers, abilities, and diseases)
-        if spell.castType == tes3.spellType.spell then
-            -- Check each effect of the spell
-            for _, effect in ipairs(spell.effects) do
-                -- Ensure the effect is valid and matches the desired school
-                if effect and effect.id ~= -1 and effect.object.school == selectedMagic then
-                    -- Check spell cost
-                    local cost = spell.magickaCost
+        if spell.castType == tes3.spellType.spell then -- Only consider standard spells (ignore powers, abilities, and diseases)
+            for _, effect in ipairs(spell.effects) do -- Check each effect of the spell in order to identify the magic school it belongs in
+                if effect and effect.id ~= -1 and effect.object.school == selectedMagic then -- Ensure the effect is valid and matches the desired school
+                    local cost = spell.magickaCost -- Obtain spell cost 
                     if cost < lowestCost then
                         cheapestSpell = spell
                         lowestCost = cost
                     end
-                    break -- Stop checking effects if one matches the school
+                    break -- Stop checking effects if one matches the selected magic school, and move onto next spell
                 end
             end
         end
     end
 
-    if(cheapestSpell == nil) then
+    if(cheapestSpell == nil) then -- If the cheapest spell could not be found, there are no spells under the selected magic school
         tes3.messageBox("No spell found under the " .. selectedOption .. " school. Deactivating training script.")
         toggleTraining = false
         spellSelected = false
         selectedMagic = tes3.magicSchool.none;
     else
         tes3.messageBox("Casting spell: %s",  cheapestSpell.name)
-        spellSelected = true -- Set flag to true in order to start spell casting
+        spellSelected = true -- Set flag to true in order to start automated spell casting
     end
 end
 
@@ -116,7 +108,7 @@ local function createCustomMenu()
     centeredBlock.childAlignX = 0.5 
     centeredBlock.childAlignY = 0.5 
 
-    -- Create lables for the menu
+    -- Create labels for the menu
     local labelTitle = centeredBlock:createLabel({ text = "Welcome to the Spell Training Tool" })
     labelTitle.borderBottom = 10
     
