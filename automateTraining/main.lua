@@ -1,14 +1,15 @@
 gameLoaded = false -- Flag set when save game is loaded, a prerequisite to the automatic spell casting
 toggleTraining = false -- Flag which is set true or false, when the F12 key is pressed, in order to activate or deactivate the spell casting automation
 
-local selectedMagic = "" -- String value specifying the selected magic school
+local selectedMagic -- Value specifying the selected magic school
 local spellSelected = false -- Flag set when a magic school is selected from the menu, in order to start repeatedly casting the spell
+local cheapestSpell -- Specifies the cheapest magicka cost spell, under the selected magic school
 
 -- IDs for the menu and its buttons
 local menuId = tes3ui.registerID("MagicSchoolMenu") -- Register a unique ID for the menu
 local buttonBlockId = tes3ui.registerID("MagicSchoolSelection") -- Register a unique ID for button blocks
 
--- List of sample magic schools or options to display and select
+-- List of magic schools to display and select
 local options = {
     "Alteration",
     "Conjuration",
@@ -31,9 +32,70 @@ end
 local function onMagicSelect(selectedOption)
     clearMenu()
 
-    selectedMagic = selectedOption
-    tes3.messageBox("Training " .. selectedMagic .. "... Press F12 to stop training.")
-    spellSelected = true
+    -- Identify which magic school has been selected (NOT WORKING)
+    -- if(selectedOption == options[0]) then
+    --     selectedMagic = tes3.magicSchool.alteration
+    -- elseif(selectedOption == options[1]) then
+    --     selectedMagic = tes3.magicSchool.conjuration
+    -- elseif(selectedOption == options[2]) then
+    --     selectedMagic = tes3.magicSchool.destruction
+    -- elseif(selectedOption == options[3]) then
+    --     selectedMagic = tes3.magicSchool.illusion
+    -- elseif(selectedOption == options[4]) then
+    --     selectedMagic = tes3.magicSchool.mysticism
+    -- elseif(selectedOption == options[5]) then
+    --     selectedMagic = tes3.magicSchool.restoration
+    -- end
+
+    -- Manually selecting Mysticism (REMOVE AFTER FIXING ABOVE)
+    selectedMagic = tes3.magicSchool.mysticism
+
+    tes3.messageBox("Training " .. selectedOption  .. "... Press F12 to stop training.")
+
+    -- Once a magic school is selected, find all character spells under this school, and choose cheapest cost spell
+
+    -- Get the player's mobile object
+    local playerObject = tes3.player.object
+
+    -- Ensure the player exists and has spells
+    if not playerObject or not playerObject.spells then
+    tes3.messageBox("Player has no spells. Deactivating training script.")
+    toggleTraining = false
+    spellSelected = false
+    selectedMagic = tes3.magicSchool.none;
+    end
+
+    local lowestCost = math.huge
+    cheapestSpell = nil
+
+    for spell in tes3.iterate(playerObject.spells.iterator) do
+        -- Only consider standard spells (ignore powers, abilities, and diseases)
+        if spell.castType == tes3.spellType.spell then
+            -- Check each effect of the spell
+            for _, effect in ipairs(spell.effects) do
+                -- Ensure the effect is valid and matches the desired school
+                if effect and effect.id ~= -1 and effect.object.school == selectedMagic then
+                    -- Check spell cost
+                    local cost = spell.magickaCost
+                    if cost < lowestCost then
+                        cheapestSpell = spell
+                        lowestCost = cost
+                    end
+                    break -- Stop checking effects if one matches the school
+                end
+            end
+        end
+    end
+
+    if(cheapestSpell == nil) then
+        tes3.messageBox("No spell found under the " .. selectedOption .. " school. Deactivating training script.")
+        toggleTraining = false
+        spellSelected = false
+        selectedMagic = tes3.magicSchool.none;
+    else
+        tes3.messageBox("Casting spell: %s",  cheapestSpell.name)
+        spellSelected = true -- Set flag to true in order to start spell casting
+    end
 end
 
 -- Function to create the custom menu
@@ -88,6 +150,7 @@ local function createCustomMenu()
         tes3.messageBox("Deactivating training script.")
         toggleTraining = false
         spellSelected = false
+        selectedMagic = tes3.magicSchool.none;
     end)
 
     -- Activate the menu mode to make the menu interactive
@@ -95,52 +158,40 @@ local function createCustomMenu()
 end
 
 -- Function used to cast spell, specific to the magic school selected
-local function castSpell(magicSchool)
-    -- Once a magic school is selected, find all character spells under this school, and choose cheapest cost spell
+local function castSpell()
+    -- Equip spell, and activate it endlessly until magicka runs out
 
-    if(magicSchool == "Mysticism") then
+    local player = tes3.player
 
-        -- Equip spell, and activate it endlessly until magicka runs out
+    local spellCost = cheapestSpell.magickaCost
 
-        local player = tes3.player
+    local totalMagicka = tes3.mobilePlayer.magicka.current
 
-        local magicSlot = tes3.mobilePlayer.currentSpell -- Get current equipped magic spell
-
-        local spellCost = magicSlot.magickaCost
-
-        local totalMagicka = tes3.mobilePlayer.magicka.current
-
-        -- Check if player has enough magicka before casting spell
-        if(totalMagicka >= spellCost) then
-            -- Check if the player has a spell readied
-            if magicSlot then
-                -- Cast the currently equipped spell
-                tes3.cast({
-                    reference = player,    
-                    target = tes3.getPlayerTarget(),
-                    spell = magicSlot,
-                    alwaysSucceeds = false
-                })
-                -- tes3.messageBox("Casting equipped spell: %s", magicSlot.id)
-            end
-        else
-            tes3.messageBox("Not enough magicka to cast current spell. Please restore your magicka.")
-            tes3.messageBox("Deactivating training script.")
-            toggleTraining = false
-            spellSelected = false
+    -- Check if player has enough magicka before casting spell
+    if(totalMagicka >= spellCost) then
+        if cheapestSpell then
+            -- Cast the cheapest spell
+            tes3.cast({
+                reference = player,    
+                target = tes3.getPlayerTarget(),
+                spell = cheapestSpell,
+                alwaysSucceeds = false
+            })
         end
-    -- Repeat for other magic schools ... 
     else
-        tes3.messageBox("NOT IMPLEMENTED. Deactivating training script.")
+        tes3.messageBox("Not enough magicka to cast current spell. Please restore your magicka.")
+        tes3.messageBox("Deactivating training script.")
         toggleTraining = false
         spellSelected = false
+        selectedMagic = tes3.magicSchool.none;
+        tes3.mobilePlayer.actionData.animationAttackState = tes3.animationState.idle -- stop spell casting animation and return to idle
     end
 end
 
 -- Handles loop for repeated spell casting
 local function onEveryFrame(e)
     if spellSelected then
-        castSpell(selectedMagic)
+        castSpell()
     end
 end
 
@@ -163,6 +214,7 @@ local function onKeyPress(e)
             if toggleTraining then
                 toggleTraining = false -- Disable spell casting automation
                 spellSelected = false
+                selectedMagic = tes3.magicSchool.none;
                 tes3.messageBox("Deactivating training script.")
 
             else
