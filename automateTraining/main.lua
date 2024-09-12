@@ -4,6 +4,7 @@ toggleTraining = false -- Flag which is set true or false, when the F12 key is p
 local selectedMagic -- Value specifying the selected magic school
 local spellSelected = false -- Flag set when a magic school is selected from the menu, in order to start repeatedly casting the spell
 local cheapestSpell -- Specifies the cheapest magicka cost spell, under the selected magic school
+local is3rdPerson -- Boolean flag used to store player's original POV state before starting the automation tool
 
 -- IDs for the menu and its buttons
 local menuId = tes3ui.registerID("MagicSchoolMenu") -- Register a unique ID for the menu
@@ -151,7 +152,8 @@ end
 
 -- Function used to cast spell, specific to the magic school selected
 local function castSpell()
-    -- Equip spell, and activate it endlessly until magicka runs out
+
+    -- Cast the cheapest spell endlessly until magicka runs out
 
     local player = tes3.player
 
@@ -183,7 +185,13 @@ end
 -- Handles loop for repeated spell casting
 local function onEveryFrame(e)
     if spellSelected then
-        castSpell()
+        -- Check current POV state and see if it has changed from original (i.e. if player presses the 'Toggle POV' button during the automatic spell casting)
+        if (tes3.mobilePlayer.animationController.is3rdPerson == true and is3rdPerson == false) or (tes3.mobilePlayer.animationController.is3rdPerson == false and is3rdPerson == true) then
+            tes3.mobilePlayer.actionData.animationAttackState = tes3.animationState.idle -- Temporarily set the player to idle animation to prevent the script from breaking when changing POV
+            is3rdPerson = not is3rdPerson
+        else
+            castSpell() -- Call this function on every frame in order to cast the cheapest spell repeatedly
+        end
     end
 end
 
@@ -202,14 +210,20 @@ end
 local function onKeyPress(e)
     if e.keyCode == 88 and gameLoaded then
 
-        if (checkIfMagickaEmpty()) then
+        if checkIfMagickaEmpty() then
             if toggleTraining then
                 toggleTraining = false -- Disable spell casting automation
                 spellSelected = false
                 selectedMagic = tes3.magicSchool.none;
                 tes3.messageBox("Deactivating training script.")
-
             else
+                -- Store the player's POV state before starting automation
+                if tes3.mobilePlayer.animationController.is3rdPerson == true then
+                    is3rdPerson = true
+                else
+                    is3rdPerson = false
+                end
+
                 toggleTraining = true -- Enable spell casting automation
                 tes3.messageBox("Activating training script.")
                 createCustomMenu()
