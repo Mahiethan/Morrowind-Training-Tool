@@ -47,8 +47,6 @@ local function onMagicSelect(selectedOption)
     -- Identify which magic school has been selected
     selectedMagic = optionValues[selectedOption]
 
-    tes3.messageBox("Training " .. selectedOption  .. "... Press F12 to stop training.")
-
     -- Once a magic school is selected, find all character spells under this school, and choose cheapest cost spell
 
     -- Get the player's mobile object
@@ -86,14 +84,15 @@ local function onMagicSelect(selectedOption)
         spellSelected = false
         selectedMagic = tes3.magicSchool.none;
     else
-        tes3.messageBox("Casting spell: %s",  cheapestSpell.name)
         spellSelected = true -- Set flag to true in order to start automated spell casting
     end
+
+    tes3.messageBox("Training " .. selectedOption  .. "... Press F12 to stop training.")
 end
 
 -- Function to create the custom menu
 local function createCustomMenu()
-    -- Check if the menu is already open; if so, close it
+    -- Check if the menu is already open and close it
     if tes3ui.findMenu(menuId) then
         tes3ui.findMenu(menuId):destroy()
     end
@@ -160,6 +159,12 @@ local function castSpell()
     local spellCost = cheapestSpell.magickaCost
 
     local totalMagicka = tes3.mobilePlayer.magicka.current
+
+    -- Equip the cheapest spell
+    tes3.mobilePlayer:equipMagic({
+        source = cheapestSpell,
+        equipItem = true
+    })
 
     -- Check if player has enough magicka before casting spell
     if(totalMagicka >= spellCost) then
